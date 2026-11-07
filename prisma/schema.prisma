@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+}
+
+enum TaskStatus {
+  todo
+  in_progress
+  done
+}
+
+model User {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authSubject String  @unique @map("auth_subject")
+  email      String   @unique @db.Citext
+  timezone   String   @default("UTC")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tasks      Task[]
+
+  @@map("users")
+}
+
+model Task {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  title       String       @db.VarChar(200)
+  description String?      @db.VarChar(5000)
+  priority    TaskPriority @default(medium)
+  status      TaskStatus   @default(todo)
+  dueAt       DateTime?    @map("due_at") @db.Timestamptz(6)
+  completedAt DateTime?    @map("completed_at") @db.Timestamptz(6)
+  deletedAt   DateTime?    @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, deletedAt, status], map: "tasks_user_deleted_status_idx")
+  @@index([userId, deletedAt, dueAt], map: "tasks_user_deleted_due_idx")
+  @@map("tasks")
+}
